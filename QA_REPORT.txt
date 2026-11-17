@@ -1,0 +1,17 @@
+TANISHA DRESSES — Purchase Bill Upload Update
+Build date: 2026-11-17
+
+Included:
+- Purchase Form accepts one supplier bill image or PDF attachment (up to 700 KB).
+- Attachment is saved with that purchase record.
+- Purchase History shows a Bill button for records that have an attachment.
+- Existing purchase calculation and per-bill editable rate fields retained.
+- Existing service worker, manifest, and icon retained from the source package.
+
+Validation performed:
+- Inline application JavaScript syntax checked with Node.js.
+- ZIP archive integrity checked after creation.
+
+Limitations:
+- Not deployed to the live Netlify site and not runtime-tested against Supabase.
+- Bill attachments are stored inside the app's business data record; keep files within the stated size limit.
