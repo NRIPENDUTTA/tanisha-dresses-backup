@@ -20,7 +20,9 @@ const empty=()=>({schema:1,business:{name:'TANISHA DRESSES',bnName:'TANISHA DRES
 const CLOUD_KEY='tanisha_dresses_firebase_sync_v1';let cloudClient=null,cloudUser=null,cloudSnapshot=undefined;let cloudReportHTML='Enter your Firebase Realtime Database URL and Sync PIN once on each phone.';
 function cloudConfig(){try{return JSON.parse(localStorage.getItem(CLOUD_KEY)||'{}')}catch(e){return {}}}
 function isCloudReady(){const c=cloudConfig();return !!(c.url&&c.pin)}
-function firebaseEndpoint(c){const base=String(c.url||'').trim().replace(/\/+$/,'');const safePin=encodeURIComponent(String(c.pin||'').trim());return base+'/tanisha_dresses/'+safePin+'/business_data.json'}
+function sanitizeFirebaseKey(k){const s=String(k||'').replace(/[.$#\[\]\/\x00-\x1f\x7f]+/g,'_');return s||'_'}
+function sanitizeFirebaseData(v){if(v===null||v===undefined)return null;if(Array.isArray(v))return v.map(sanitizeFirebaseData);if(typeof v==='object'){const out={};for(const [k,val] of Object.entries(v)){if(val===undefined)continue;out[sanitizeFirebaseKey(k)]=sanitizeFirebaseData(val)}return out}return v}
+function firebaseEndpoint(c){const base=String(c.url||'').trim().replace(/\/+$/,'');const cleanPin=String(c.pin||'').trim().replace(/[.$#\[\]\/\s]+/g,'_')||'default';const safePin=encodeURIComponent(cleanPin);return base+'/tanisha_dresses/'+safePin+'/business_data.json'}
 function cloudPage(){let c=cloudConfig();const connected=isCloudReady();return head('Multi-Phone Auto Sync (Firebase)','Khatabook-style live sync across all phones — no Netlify or Supabase needed')+`<section class="panel"><div class="notice"><b>Firebase Multi-Phone Sync:</b> Paste your Firebase Realtime Database URL and Sync PIN once on each phone. Every bill, receipt, payment, and stock change syncs automatically across all phones in real time.</div><form id="cloudconfigform" style="margin-top:14px"><div class="fieldgrid"><div class="field full"><label>Firebase Realtime Database URL</label><input name="url" type="url" placeholder="https://your-project-default-rtdb.firebaseio.com" value="${esc(c.url||'')}" required></div><div class="field full"><label>Sync PIN (Secret Code)</label><input name="pin" type="password" autocomplete="off" placeholder="e.g. 741126" value="${esc(c.pin||'')}" required></div></div><div class="formactions"><button class="btn primary" type="submit">Save & Connect</button><button class="btn" type="button" id="cloudwrite">Sync Now</button><button class="btn" type="button" id="clouddisconnect">Disconnect</button></div></form><p id="cloudmsg" class="muted" aria-live="polite" style="margin-top:10px">${connected?'Connected to Firebase · Multi-phone Auto-Sync Active':'Not connected yet. Auto-saved on this phone.'}</p></section><section class="panel" style="margin-top:12px"><h3>Sync Activity</h3><div id="cloudreport" class="notice">${cloudReportHTML}</div></section>`}
 function cloudMessage(t){let e=document.getElementById('cloudmsg');if(e)e.textContent=t;toast(t)}
 function stableJSON(v){if(v===null||typeof v!=='object')return JSON.stringify(v);if(Array.isArray(v))return '['+v.map(stableJSON).join(',')+']';return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stableJSON(v[k])).join(',')+'}'}
@@ -63,6 +65,7 @@ async function safeCloudSync(source='manual'){
   const localHash=stableJSON(db);
   let merged=remote?mergeCloudRecords(db,remote):JSON.parse(JSON.stringify(db));
   merged.meta={...(merged.meta||{}),cloudConnected:true,lastCloudSync:new Date().toISOString()};
+  merged=sanitizeFirebaseData(merged);
   const mergedHash=stableJSON(merged);
   const remoteHash=remote?stableJSON(remote):'';
   if(!remote||mergedHash!==remoteHash){
